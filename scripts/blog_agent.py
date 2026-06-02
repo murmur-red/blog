@@ -3,6 +3,7 @@ import os
 import datetime
 import subprocess
 import re
+import requests
 
 
 SYSTEM = """You are a tech blogger writing for "Poorly Researched" — tagline: "Thoughts on tech, AI, and career — half-baked and served fresh."
@@ -28,46 +29,61 @@ def get_yesterday():
     return (datetime.date.today() - datetime.timedelta(days=1)).strftime("%B %d, %Y")
 
 
-def generate_post():
+def research_topics(yesterday):
+    """Use Perplexity sonar-pro to find trending topics from yesterday."""
+    response = requests.post(
+        "https://api.perplexity.ai/chat/completions",
+        headers={
+            "Authorization": f"Bearer {os.environ['PERPLEXITY_API_KEY']}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": "sonar-pro",
+            "messages": [{
+                "role": "user",
+                "content": (
+                    f"What were the most interesting and surprising tech, AI, and gaming news stories from {yesterday}? "
+                    "Focus on things with unexpected implications, underestimated developments, or counterintuitive angles. "
+                    "Give me the top 3-5 stories with key facts, numbers, and specific details. Be concise."
+                )
+            }],
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
+
+
+def write_post(research, yesterday):
+    """Use Claude to write a 350-word blog post based on the research."""
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+    response = client.messages.create(
+        model="claude-opus-4-8",
+        max_tokens=1024,
+        system=SYSTEM,
+        messages=[{
+            "role": "user",
+            "content": (
+                f"Here's what happened in tech/AI/gaming on {yesterday}:\n\n"
+                f"{research}\n\n"
+                "Pick the single most interesting topic — the one with the most surprising implications "
+                "or that most people are underestimating — and write a 350-word blog post about it.\n\n"
+                "Return ONLY:\n"
+                "Line 1: Post title\n"
+                "Line 2: blank\n"
+                "Lines 3+: the 350-word post body\n\n"
+                "Nothing else. No preamble."
+            )
+        }],
+    )
+    return response.content[0].text.strip()
+
+
+def generate_post():
     yesterday = get_yesterday()
-
-    messages = [{
-        "role": "user",
-        "content": (
-            f"Search the web for the most interesting tech, AI, and gaming news from {yesterday}. "
-            "Then pick the single most interesting topic — the one with the most surprising implications "
-            "or that most people are underestimating — and write a 350-word blog post about it.\n\n"
-            "Return ONLY:\n"
-            "Line 1: Post title\n"
-            "Line 2: blank\n"
-            "Lines 3+: the 350-word post body\n\n"
-            "Nothing else. No preamble."
-        )
-    }]
-
-    # Web search is server-side — just handle pause_turn if the server loop hits its limit
-    for _ in range(5):
-        response = client.messages.create(
-            model="claude-opus-4-8",
-            max_tokens=2048,
-            system=SYSTEM,
-            tools=[{"type": "web_search_20260209", "name": "web_search"}],
-            messages=messages,
-        )
-
-        if response.stop_reason == "end_turn":
-            for block in response.content:
-                if hasattr(block, "text") and block.text.strip():
-                    return block.text.strip()
-
-        if response.stop_reason == "pause_turn":
-            # Append assistant turn and loop — server resumes automatically from the trailing tool blocks
-            messages.append({"role": "assistant", "content": response.content})
-        else:
-            break
-
-    raise RuntimeError(f"Unexpected stop_reason: {response.stop_reason}")
+    research = research_topics(yesterday)
+    return write_post(research, yesterday)
 
 
 def create_post_file(content, date):
