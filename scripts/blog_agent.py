@@ -116,7 +116,10 @@ def write_post(research, yesterday):
             )
         }],
     )
-    return response.content[0].text.strip()
+    text = response.content[0].text.strip()
+    # Hard-remove em dashes regardless of what the model produces
+    text = text.replace(" — ", ". ").replace("— ", ". ").replace(" —", ".").replace("—", ".")
+    return text
 
 
 def generate_post():
