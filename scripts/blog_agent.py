@@ -56,27 +56,33 @@ def get_x_trends(yesterday):
 
 def research_topics(trends, yesterday):
     """Use Perplexity to research the X trends deeper with facts and context."""
-    response = requests.post(
-        "https://api.perplexity.ai/chat/completions",
-        headers={
-            "Authorization": f"Bearer {os.environ['PERPLEXITY_API_KEY']}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": "sonar-pro",
-            "messages": [{
-                "role": "user",
-                "content": (
-                    f"These topics were trending on X on {yesterday}:\n\n{trends}\n\n"
-                    "Research each one and give me the actual facts, numbers, and context behind them. "
-                    "What really happened? What are the real implications? Be specific and concise."
-                )
-            }],
-        },
-        timeout=30,
-    )
-    response.raise_for_status()
-    return response.json()["choices"][0]["message"]["content"]
+    for attempt in range(3):
+        try:
+            response = requests.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {os.environ['PERPLEXITY_API_KEY']}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "sonar-pro",
+                    "messages": [{
+                        "role": "user",
+                        "content": (
+                            f"These topics were trending on X on {yesterday}:\n\n{trends}\n\n"
+                            "Research each one and give me the actual facts, numbers, and context behind them. "
+                            "What really happened? What are the real implications? Be specific and concise."
+                        )
+                    }],
+                },
+                timeout=90,
+            )
+            response.raise_for_status()
+            return response.json()["choices"][0]["message"]["content"]
+        except requests.exceptions.Timeout:
+            if attempt == 2:
+                raise
+            print(f"Perplexity timeout, retrying ({attempt + 2}/3)...")
 
 
 def write_post(research, yesterday):
