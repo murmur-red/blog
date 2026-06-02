@@ -3,7 +3,13 @@ import os
 import datetime
 import subprocess
 import re
+import json
+import uuid
+import base64
 import requests
+
+BLOG_BASE_URL = "https://murmur-red.github.io/blog"
+WEBSITE_ARTICLES_API = "https://api.github.com/repos/murmur-red/murmur/contents/articles.json"
 
 
 SYSTEM = """You are writing a blog post for "Poorly Researched" — tagline: "Thoughts on tech, AI, and career — half-baked and served fresh."
@@ -161,9 +167,49 @@ def push_to_github(filename, title):
     subprocess.run(["git", "push"], check=True)
 
 
+def publish_to_website(title, date, slug):
+    token = os.environ["MURMUR_WEBSITE_TOKEN"]
+    url = f"{BLOG_BASE_URL}/tech/{date.strftime('%Y/%m/%d')}/{slug}.html"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+    }
+
+    res = requests.get(WEBSITE_ARTICLES_API, headers=headers)
+    res.raise_for_status()
+    file_data = res.json()
+    sha = file_data["sha"]
+    data = json.loads(base64.b64decode(file_data["content"]).decode())
+
+    data["articles"].insert(0, {
+        "id": str(uuid.uuid4()),
+        "title": title,
+        "type": "Blog",
+        "topic": "Tech & AI",
+        "date": date.isoformat(),
+        "status": "Published",
+        "url": url,
+    })
+    data["updated"] = date.isoformat()
+
+    res = requests.put(WEBSITE_ARTICLES_API, headers=headers, json={
+        "message": f"Add blog post: {title}",
+        "content": base64.b64encode(json.dumps(data, indent=2).encode()).decode(),
+        "sha": sha,
+        "committer": {"name": "murmur-red", "email": "murmur.red1@gmail.com"},
+    })
+    res.raise_for_status()
+
+
 if __name__ == "__main__":
     today = datetime.date.today()
     content = generate_post()
     filename, title = create_post_file(content, today)
     push_to_github(filename, title)
-    print(f"Published: {filename}")
+    print(f"Blog published: {filename}")
+
+    lines = content.strip().split("\n")
+    slug = re.sub(r"[^\w\s-]", "", lines[0].strip().strip('"').strip("'").lower())
+    slug = re.sub(r"\s+", "-", slug)[:50].strip("-")
+    publish_to_website(title, today, slug)
+    print(f"Website updated: articles.json")
