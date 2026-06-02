@@ -29,8 +29,33 @@ def get_yesterday():
     return (datetime.date.today() - datetime.timedelta(days=1)).strftime("%B %d, %Y")
 
 
-def research_topics(yesterday):
-    """Use Perplexity sonar-pro to find trending topics from yesterday."""
+def get_x_trends(yesterday):
+    """Use Grok to find what's trending on X in tech/AI/gaming."""
+    response = requests.post(
+        "https://api.x.ai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {os.environ['XAI_API_KEY']}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": "grok-3",
+            "messages": [{
+                "role": "user",
+                "content": (
+                    f"What were the top trending tech, AI, and gaming topics on X on {yesterday}? "
+                    "Focus on what people were actually debating, hyping, or dunking on. "
+                    "Give me the top 3 topics with a sentence on why each was getting attention."
+                )
+            }],
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
+
+
+def research_topics(trends, yesterday):
+    """Use Perplexity to research the X trends deeper with facts and context."""
     response = requests.post(
         "https://api.perplexity.ai/chat/completions",
         headers={
@@ -42,9 +67,9 @@ def research_topics(yesterday):
             "messages": [{
                 "role": "user",
                 "content": (
-                    f"What were the most interesting and surprising tech, AI, and gaming news stories from {yesterday}? "
-                    "Focus on things with unexpected implications, underestimated developments, or counterintuitive angles. "
-                    "Give me the top 3-5 stories with key facts, numbers, and specific details. Be concise."
+                    f"These topics were trending on X on {yesterday}:\n\n{trends}\n\n"
+                    "Research each one and give me the actual facts, numbers, and context behind them. "
+                    "What really happened? What are the real implications? Be specific and concise."
                 )
             }],
         },
@@ -65,7 +90,7 @@ def write_post(research, yesterday):
         messages=[{
             "role": "user",
             "content": (
-                f"Here's what happened in tech/AI/gaming on {yesterday}:\n\n"
+                f"Here's what was trending and what's behind it from {yesterday}:\n\n"
                 f"{research}\n\n"
                 "Pick the single most interesting topic — the one with the most surprising implications "
                 "or that most people are underestimating — and write a 350-word blog post about it.\n\n"
@@ -82,7 +107,8 @@ def write_post(research, yesterday):
 
 def generate_post():
     yesterday = get_yesterday()
-    research = research_topics(yesterday)
+    trends = get_x_trends(yesterday)
+    research = research_topics(trends, yesterday)
     return write_post(research, yesterday)
 
 
