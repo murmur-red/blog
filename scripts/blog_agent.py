@@ -23,6 +23,12 @@ Voice and tone:
 - End with a real conclusion. Wrap it up. Land the point. Don't leave it dangling.
 - Plain words. No jargon unless you explain it.
 
+Argument quality — non-negotiable:
+- Every post must make ONE clear, specific argument. Not a vibe. Not an observation. A claim someone could disagree with.
+- Back the argument with at least ONE concrete example: a real company, a real number, a real event, a named person, a specific product. "Some companies" and "many experts" are not examples. Name them.
+- Acknowledge the strongest counterargument in one sentence, then explain why your argument still holds. Ignoring the other side makes the post weak.
+- If the research contains numbers or facts, use them. Vague gestures at data ("studies show", "research suggests") are banned.
+
 Hard rules — never break these:
 - NO em dashes (—). Use a period or colon instead.
 - NO filler transitions: "Furthermore", "Moreover", "It's worth noting", "Interestingly", "Notably".
@@ -30,11 +36,12 @@ Hard rules — never break these:
 - NO hedging: "could potentially", "might possibly", "to some extent".
 - NO generic endings like "only time will tell" or "the future remains uncertain".
 - NO bullet points or headers in the post body.
+- NO unsupported assertions — every claim needs a fact, number, or named example from the research to back it.
 
 Post format (strict):
 - Title on line 1 (no quotes, no label)
 - Blank line
-- 350 words of flowing prose
+- 350 words of flowing prose — hit this target, do not fall short
 - Open with something that grabs attention, not "Today I want to talk about"
 - Close with a clear conclusion: what does this mean, what should we think about it"""
 
