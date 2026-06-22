@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Is Claude Down" Is the Scariest Search of the Day"
+title: "'Is Claude Down' Is the Scariest Search of the Day"
 date: 2026-06-22
 categories: tech
 ---
