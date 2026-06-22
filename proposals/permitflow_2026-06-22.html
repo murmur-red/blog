@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A proposal for Permitflow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --dark:   #0F0F0F;
+      --cream:  #F4F0EB;
+      --white:  #FFFFFF;
+      --accent: #C0392B;
+      --ink:    #1A1A1A;
+      --muted:  #666666;
+      --border: #DDD8D2;
+      --serif:  'DM Serif Display', Georgia, serif;
+      --sans:   'DM Sans', -apple-system, sans-serif;
+    }
+
+    html {
+      scroll-snap-type: y mandatory;
+      overflow-y: scroll;
+      height: 100%;
+    }
+
+    body {
+      font-family: var(--sans);
+      color: var(--ink);
+      height: 100%;
+    }
+
+    /* ── Slides ── */
+    .slide {
+      height: 100vh;
+      scroll-snap-align: start;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .slide-dark  { background: var(--dark);  }
+    .slide-cream { background: var(--cream); }
+    .slide-white { background: var(--white); }
+
+    .slide-inner {
+      width: 100%;
+      max-width: 860px;
+      padding: 60px 72px;
+      position: relative;
+    }
+
+    /* ── Ghost number ── */
+    .ghost-num {
+      position: absolute;
+      top: -20px;
+      right: 60px;
+      font-family: var(--serif);
+      font-size: 180px;
+      line-height: 1;
+      color: var(--ink);
+      opacity: 0.04;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* ── Eyebrow label ── */
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+    .eyebrow-light  { color: #888; }
+    .eyebrow-dark   { color: var(--muted); }
+    .eyebrow-accent { color: var(--accent); }
+
+    /* ── Slide 1: Cover ── */
+    .s1-inner {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 52px 72px;
+      max-width: none;
+    }
+
+    .s1-brand {
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      color: #555;
+      font-weight: 400;
+    }
+
+    .s1-center { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+
+    .s1-for {
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #555;
+    }
+
+    .s1-title {
+      font-family: var(--serif);
+      font-size: clamp(48px, 8vw, 88px);
+      font-weight: 400;
+      color: #FFFFFF;
+      line-height: 1.1;
+    }
+
+    .s1-note {
+      font-size: 17px;
+      color: #888;
+      font-weight: 300;
+      max-width: 520px;
+      line-height: 1.6;
+      margin-top: 8px;
+    }
+
+    .s1-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #555;
+    }
+
+    .s1-scroll {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #444;
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50%       { opacity: 1;   }
+    }
+
+    /* ── Slide 2: Insight ── */
+    .s2-heading {
+      font-family: var(--serif);
+      font-size: 28px;
+      font-weight: 400;
+      color: var(--ink);
+      margin-bottom: 18px;
+      margin-top: 20px;
+    }
+
+    .s2-body {
+      font-size: 16.5px;
+      line-height: 1.85;
+      color: #333;
+      max-width: 640px;
+    }
+
+    .s2-divider {
+      width: 48px;
+      height: 2px;
+      background: var(--accent);
+      margin: 32px 0;
+    }
+
+    /* ── Slide 3: Build ── */
+    .s3-heading {
+      font-family: var(--serif);
+      font-size: 26px;
+      font-weight: 400;
+      color: var(--ink);
+      margin-bottom: 28px;
+      margin-top: 20px;
+      max-width: 620px;
+      line-height: 1.3;
+    }
+
+    .s3-list {
+      list-style: none;
+    }
+
+    .s3-list li {
+      padding: 15px 0 15px 36px;
+      position: relative;
+      font-size: 15.5px;
+      color: #333;
+      border-bottom: 1px solid var(--border);
+      line-height: 1.65;
+    }
+
+    .s3-list li:last-child { border-bottom: none; }
+
+    .s3-list li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-size: 16px;
+      top: 15px;
+    }
+
+    /* ── Slide 4: Plan ── */
+    .s4-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 56px;
+      margin-top: 20px;
+    }
+
+    .s4-col-label {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-weight: 500;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .tl-row {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #EAE6E0;
+      font-size: 14px;
+    }
+
+    .tl-row:last-child { border-bottom: none; }
+
+    .tl-label {
+      font-weight: 500;
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .tl-text { color: var(--muted); line-height: 1.5; }
+
+    .s4-price {
+      font-family: var(--serif);
+      font-size: 48px;
+      color: var(--ink);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .s4-offer {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .s4-terms {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.7;
+      margin-bottom: 10px;
+    }
+
+    .s4-retainer {
+      font-size: 13px;
+      color: #999;
+      font-style: italic;
+    }
+
+    /* ── Slide 5: CTA ── */
+    .s5-inner {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    .s5-from {
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 24px;
+    }
+
+    .s5-title {
+      font-family: var(--serif);
+      font-size: clamp(44px, 7vw, 76px);
+      color: #FFFFFF;
+      font-weight: 400;
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+
+    .s5-sub {
+      font-size: 17px;
+      color: #888;
+      font-weight: 300;
+      margin-bottom: 44px;
+      max-width: 400px;
+      line-height: 1.6;
+    }
+
+    .s5-btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      padding: 16px 44px;
+      font-size: 14px;
+      letter-spacing: 0.06em;
+      font-family: var(--sans);
+      font-weight: 500;
+      transition: background 0.15s;
+      margin-bottom: 32px;
+    }
+
+    .s5-btn:hover { background: #a93226; }
+
+    .s5-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .s5-links a {
+      color: #666;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .s5-links a:hover { color: #fff; }
+
+    .s5-sep { color: #333; }
+
+    /* ── Nav dots ── */
+    .nav-dots {
+      position: fixed;
+      right: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 100;
+    }
+
+    .nav-dot {
+      display: block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: transparent;
+      border: 1.5px solid rgba(128,128,128,0.4);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .nav-dot.active,
+    .nav-dot:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      transform: scale(1.3);
+    }
+
+    @media (max-width: 640px) {
+      .slide-inner { padding: 40px 28px; }
+      .s1-inner    { padding: 36px 28px; }
+      .s4-grid     { grid-template-columns: 1fr; gap: 36px; }
+      .ghost-num   { font-size: 120px; right: 20px; }
+      .nav-dots    { right: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav dots -->
+  <nav class="nav-dots" aria-label="Slide navigation">
+    <a class="nav-dot active" href="#s1" title="Cover"></a>
+    <a class="nav-dot" href="#s2" title="What I noticed"></a>
+    <a class="nav-dot" href="#s3" title="What I'd build"></a>
+    <a class="nav-dot" href="#s4" title="Timeline &amp; Investment"></a>
+    <a class="nav-dot" href="#s5" title="Let's talk"></a>
+  </nav>
+
+  <!-- Slide 1: Cover -->
+  <section class="slide slide-dark" id="s1">
+    <div class="s1-inner" style="width:100%;">
+      <div class="s1-brand">murmur.red</div>
+      <div class="s1-center">
+        <p class="s1-for">AI Automation Proposal</p>
+        <h1 class="s1-title">Permitflow</h1>
+        <p class="s1-note">on scaling CS onboarding without scaling headcount first</p>
+      </div>
+      <div class="s1-footer">
+        <span>2026-06-22</span>
+        <span class="s1-scroll">Scroll ↓</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 2: What I noticed / What it costs -->
+  <section class="slide slide-cream" id="s2">
+    <div class="slide-inner">
+      <span class="ghost-num">01</span>
+      <span class="eyebrow eyebrow-accent">The observation</span>
+      <h2 class="s2-heading">What I noticed</h2>
+      <p class="s2-body">You closed a $54M Series B led by Accel and immediately opened 32+ roles, including a heavy stack of Customer Success Manager listings at $130k-$180k. PermitFlow&#x27;s own pitch is automating repetitive documentation and reducing manual coordination — but a CS team growing this fast usually runs onboarding, status updates, and renewal tracking by hand for the first year.</p>
+      <div class="s2-divider"></div>
+      <span class="eyebrow eyebrow-accent">The business case</span>
+      <h2 class="s2-heading">What that costs</h2>
+      <p class="s2-body">If each CSM spends ~6 hours a week on manual onboarding, health reporting, and status sync, that&#x27;s roughly €25k/year in loaded cost per person spent on work that doesn&#x27;t need a human. Across even 10 CSMs that&#x27;s €250k/year — close to two extra hires you&#x27;re funding just to keep up with admin instead of customers.</p>
+    </div>
+  </section>
+
+  <!-- Slide 3: What I'd build -->
+  <section class="slide slide-white" id="s3">
+    <div class="slide-inner">
+      <span class="ghost-num">02</span>
+      <span class="eyebrow eyebrow-accent">The proposal</span>
+      <h2 class="s3-heading">Here's what I'd build for Permitflow</h2>
+      <ul class="s3-list">
+        <li>Automated onboarding sequence that triggers tasks, intro emails, and account setup the moment a deal closes — no manual kickoff checklist per customer</li><li>Customer health dashboard that pulls usage and permit-status signals into one view, flagging at-risk accounts before a CSM has to notice manually</li><li>Renewal and status sync that pushes account milestones into your CRM and CS tool automatically, so no CSM is copy-pasting between systems</li><li>Weekly customer-facing status reports generated and sent without a CSM assembling them by hand</li><li>A documented handoff so your CS ops lead can extend each workflow to new segments without me in the loop</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Slide 4: Timeline + Investment -->
+  <section class="slide slide-cream" id="s4">
+    <div class="slide-inner">
+      <span class="ghost-num">03</span>
+      <span class="eyebrow eyebrow-accent">The plan</span>
+      <div class="s4-grid">
+        <div>
+          <p class="s4-col-label">Timeline — Automation Sprint</p>
+          <div class="tl-row"><span class="tl-label">Week 1</span><span class="tl-text">Audit workflows, map integrations, define build plan</span></div><div class="tl-row"><span class="tl-label">Weeks 2–3</span><span class="tl-text">Build 2-3 connected automations across your stack</span></div><div class="tl-row"><span class="tl-label">Week 4</span><span class="tl-text">Deploy, train your team, handover + 2-week async support</span></div>
+        </div>
+        <div>
+          <p class="s4-col-label">Investment</p>
+          <div class="s4-price">€8,000</div>
+          <p class="s4-offer">Flat fee &nbsp;·&nbsp; No hourly billing</p>
+          <p class="s4-terms">50% on start · 50% on delivery</p>
+          <p class="s4-retainer">Ongoing automation support available post-delivery.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 5: CTA -->
+  <section class="slide slide-dark" id="s5">
+    <div class="slide-inner s5-inner">
+      <p class="s5-from">Lena Ry &nbsp;·&nbsp; AI Automation Consultant</p>
+      <h2 class="s5-title">Let's talk.</h2>
+      <p class="s5-sub">20 minutes to see if this is a fit — no pitch, no deck, just a conversation.</p>
+      <a class="s5-btn" href="https://calendly.com/murmur-red" target="_blank">Book a 30-minute call</a>
+      <div class="s5-links">
+        <a href="mailto:murmur.red1@gmail.com">murmur.red1@gmail.com</a>
+        <span class="s5-sep">·</span>
+        <a href="https://www.linkedin.com/in/lena-ry-8baa8716/" target="_blank">LinkedIn</a>
+        <span class="s5-sep">·</span>
+        <a href="https://murmur.red" target="_blank">murmur.red</a>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    const dots   = document.querySelectorAll('.nav-dot');
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting && e.intersectionRatio >= 0.5) {
+          const idx = Array.from(slides).indexOf(e.target);
+          dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+        }
+      });
+    }, { threshold: 0.5 });
+
+    slides.forEach(s => io.observe(s));
+
+    // Keyboard navigation
+    document.addEventListener('keydown', e => {
+      const ids = ['s1','s2','s3','s4','s5'];
+      const cur = ids.findIndex(id => {
+        const el = document.getElementById(id);
+        const r  = el.getBoundingClientRect();
+        return r.top >= -10 && r.top <= 10;
+      });
+      if (e.key === 'ArrowDown' && cur < ids.length - 1)
+        document.getElementById(ids[cur + 1]).scrollIntoView({behavior:'smooth'});
+      if (e.key === 'ArrowUp' && cur > 0)
+        document.getElementById(ids[cur - 1]).scrollIntoView({behavior:'smooth'});
+    });
+  </script>
+
+</body>
+</html>
