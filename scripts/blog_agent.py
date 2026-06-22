@@ -152,10 +152,14 @@ def create_post_file(content, date):
 
     filename = f"_posts/{date.strftime('%Y-%m-%d')}-{slug}.md"
 
+    # json.dumps yields a valid double-quoted YAML scalar with inner quotes
+    # escaped, so titles containing " or ' can't break the front matter.
+    yaml_title = json.dumps(title)
+
     with open(filename, "w") as f:
         f.write(f"""---
 layout: post
-title: "{title}"
+title: {yaml_title}
 date: {date.strftime('%Y-%m-%d')}
 categories: tech
 ---
