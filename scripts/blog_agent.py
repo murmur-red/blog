@@ -106,9 +106,29 @@ def research_topics(trends, yesterday):
             print(f"Perplexity timeout, retrying ({attempt + 2}/3)...")
 
 
-def write_post(research, yesterday):
+def get_recent_posts(n=12):
+    """Read the last n published posts (title + opening line) so the writer
+    can avoid repeating a topic or argument it already covered."""
+    posts = []
+    for filename in sorted(os.listdir("_posts"), reverse=True)[:n]:
+        with open(os.path.join("_posts", filename)) as f:
+            text = f.read()
+        title_match = re.search(r'^title:\s*(.+)$', text, re.MULTILINE)
+        title = title_match.group(1).strip().strip('"').replace('\\"', '"') if title_match else filename
+        # Body starts after the closing front-matter delimiter
+        parts = text.split("---", 2)
+        body = parts[2].strip() if len(parts) == 3 else ""
+        opening = body.split("\n")[0][:200]
+        date = filename[:10]
+        posts.append(f"- {date}: {title}\n  Opens with: {opening}")
+    return posts
+
+
+def write_post(research, yesterday, recent_posts):
     """Use Claude to write a 350-word blog post based on the research."""
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+    already_written = "\n".join(recent_posts) if recent_posts else "(none yet)"
 
     response = client.messages.create(
         model="claude-opus-4-8",
@@ -119,7 +139,14 @@ def write_post(research, yesterday):
             "content": (
                 f"Here's what was trending and what's behind it from {yesterday}:\n\n"
                 f"{research}\n\n"
-                "Pick the single most interesting topic — the one with the most surprising implications "
+                "You have ALREADY published these recent posts:\n\n"
+                f"{already_written}\n\n"
+                "Hard constraint: do NOT repeat a topic, title, or core argument from the list above. "
+                "In particular, if you already wrote a post arguing that 'trending' is fragmented, "
+                "regional, or meaningless, you may not make that argument again in any form. "
+                "If every researched topic overlaps with a past post, pick the least similar one "
+                "and write about a concrete, specific angle of it that no past post covered.\n\n"
+                "Pick the single most interesting NEW topic — the one with the most surprising implications "
                 "or that most people are underestimating — and write a 350-word blog post about it.\n\n"
                 "Return ONLY:\n"
                 "Line 1: Post title\n"
@@ -135,11 +162,44 @@ def write_post(research, yesterday):
     return text
 
 
+STOPWORDS = {"a", "an", "the", "is", "are", "was", "and", "or", "of", "on", "in",
+             "to", "it", "as", "no", "not", "that", "this", "there", "you", "your"}
+
+
+def title_overlap(title_a, title_b):
+    """Fraction of content words shared between two titles (0.0 - 1.0)."""
+    words_a = {w for w in re.findall(r"[a-z']+", title_a.lower()) if w not in STOPWORDS}
+    words_b = {w for w in re.findall(r"[a-z']+", title_b.lower()) if w not in STOPWORDS}
+    if not words_a or not words_b:
+        return 0.0
+    return len(words_a & words_b) / min(len(words_a), len(words_b))
+
+
+def is_repeat(content, recent_posts):
+    """True if the generated post's title heavily overlaps a recent title."""
+    new_title = content.strip().split("\n")[0]
+    for post in recent_posts:
+        old_title = post.split("\n")[0].split(": ", 1)[-1]
+        if title_overlap(new_title, old_title) >= 0.6:
+            print(f"Repeat detected: '{new_title}' vs '{old_title}'")
+            return True
+    return False
+
+
 def generate_post():
     yesterday = get_yesterday()
     trends = get_x_trends(yesterday)
     research = research_topics(trends, yesterday)
-    return write_post(research, yesterday)
+    recent_posts = get_recent_posts()
+    content = write_post(research, yesterday, recent_posts)
+    if is_repeat(content, recent_posts):
+        print("Regenerating with the repeated title added to the blocklist...")
+        repeated = content.strip().split("\n")[0]
+        recent_posts = [f"- REJECTED DRAFT (do not write this again): {repeated}"] + recent_posts
+        content = write_post(research, yesterday, recent_posts)
+        if is_repeat(content, recent_posts):
+            raise RuntimeError(f"Post repeats a recent topic even after retry: {content.splitlines()[0]}")
+    return content
 
 
 def create_post_file(content, date):
