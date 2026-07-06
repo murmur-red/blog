@@ -106,7 +106,7 @@ def research_topics(trends, yesterday):
             print(f"Perplexity timeout, retrying ({attempt + 2}/3)...")
 
 
-def get_recent_posts(n=12):
+def get_recent_posts(n=24):
     """Read the last n published posts (title + opening line) so the writer
     can avoid repeating a topic or argument it already covered."""
     posts = []
