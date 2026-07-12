@@ -8,7 +8,7 @@ import uuid
 import base64
 import requests
 
-BLOG_BASE_URL = "https://murmur-red.github.io/blog"
+BLOG_BASE_URL = "https://blog.murmur.red"
 WEBSITE_ARTICLES_API = "https://api.github.com/repos/murmur-red/murmur/contents/articles.json"
 
 
@@ -176,13 +176,50 @@ def title_overlap(title_a, title_b):
 
 
 def is_repeat(content, recent_posts):
-    """True if the generated post's title heavily overlaps a recent title."""
+    """True if the generated post's title lexically overlaps a recent title.
+    Cheap, fast pre-check; catches near-identical titles with no API call."""
     new_title = content.strip().split("\n")[0]
     for post in recent_posts:
         old_title = post.split("\n")[0].split(": ", 1)[-1]
-        if title_overlap(new_title, old_title) >= 0.6:
-            print(f"Repeat detected: '{new_title}' vs '{old_title}'")
+        if title_overlap(new_title, old_title) >= 0.4:
+            print(f"Repeat detected (title overlap): '{new_title}' vs '{old_title}'")
             return True
+    return False
+
+
+def is_similar_topic(content, recent_posts):
+    """Ask Claude whether the new post's topic or core argument is even
+    slightly similar to any recently published post. Catches thematic
+    repeats that share no title wording (e.g. two different "ceasefire is
+    meaningless" posts about different conflicts)."""
+    if not recent_posts:
+        return False
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=100,
+        system=(
+            "You are a strict editorial duplicate-checker for a blog. Compare the NEW POST "
+            "to the RECENTLY PUBLISHED posts. Flag it as similar if it covers the same event, "
+            "the same underlying topic, or makes the same core argument as any recent post, "
+            "even if the wording, title, or specific example differs. Err on the side of "
+            "flagging: even a slight thematic overlap counts as similar."
+        ),
+        messages=[{
+            "role": "user",
+            "content": (
+                f"NEW POST:\n{content.strip()}\n\n"
+                f"RECENTLY PUBLISHED:\n{chr(10).join(recent_posts)}\n\n"
+                "Reply with exactly one line. If similar to any recent post: "
+                "'SIMILAR: <date of the matching post>: <its title>'. "
+                "If genuinely a different topic and argument from all of them: 'UNIQUE'."
+            )
+        }],
+    )
+    verdict = response.content[0].text.strip()
+    if verdict.upper().startswith("SIMILAR"):
+        print(f"Repeat detected (topic): {verdict}")
+        return True
     return False
 
 
@@ -191,15 +228,17 @@ def generate_post():
     trends = get_x_trends(yesterday)
     research = research_topics(trends, yesterday)
     recent_posts = get_recent_posts()
-    content = write_post(research, yesterday, recent_posts)
-    if is_repeat(content, recent_posts):
-        print("Regenerating with the repeated title added to the blocklist...")
-        repeated = content.strip().split("\n")[0]
-        recent_posts = [f"- REJECTED DRAFT (do not write this again): {repeated}"] + recent_posts
+
+    content = None
+    for attempt in range(3):
         content = write_post(research, yesterday, recent_posts)
-        if is_repeat(content, recent_posts):
-            raise RuntimeError(f"Post repeats a recent topic even after retry: {content.splitlines()[0]}")
-    return content
+        if not is_repeat(content, recent_posts) and not is_similar_topic(content, recent_posts):
+            return content
+        repeated = content.strip().split("\n")[0]
+        print(f"Attempt {attempt + 1}/3 rejected, regenerating...")
+        recent_posts = [f"- REJECTED DRAFT (too similar, do not write this again): {repeated}"] + recent_posts
+
+    raise RuntimeError(f"Could not produce a sufficiently unique post after 3 attempts. Last draft: {content.splitlines()[0]}")
 
 
 def create_post_file(content, date):

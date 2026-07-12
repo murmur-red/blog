@@ -1,8 +1,8 @@
 title: Poorly Researched
 description: >-
   Thoughts on tech, AI, and career — half-baked and served fresh.
-baseurl: "/blog"
-url: "https://murmur-red.github.io"
+baseurl: ""
+url: "https://blog.murmur.red"
 
 author:
   name: murmur-red
