@@ -29,6 +29,10 @@ Argument quality — non-negotiable:
 - Acknowledge the strongest counterargument in one sentence, then explain why your argument still holds. Ignoring the other side makes the post weak.
 - If the research contains numbers or facts, use them. Vague gestures at data ("studies show", "research suggests") are banned.
 
+Angle to favor:
+- Most AI/tech coverage is written by and for people who already work in tech. Actively look for the angle that shows how a trend actually lands on someone who doesn't: a teacher, a baker, a plumber, a bike repair shop owner, a nurse, a small shop owner. Be specific about what changes for them: what they pay, what they now have to learn, what gets automated out from under them, what new leverage they get.
+- Not every post needs this angle. Use it whenever the trending topic plausibly touches ordinary work or daily life, not just the tech industry talking to itself.
+
 Hard rules — never break these:
 - NO em dashes (—). Use a period or colon instead.
 - NO filler transitions: "Furthermore", "Moreover", "It's worth noting", "Interestingly", "Notably".
@@ -178,6 +182,10 @@ EVERGREEN_TOPICS = [
     "Why most code review comments are about style, not correctness, and what that says about a team",
     "The myth that remote work killed mentorship",
     "Why every company's internal tooling looks like it was built by a different company",
+    "What happens to a neighborhood bike repair shop once the manufacturer sells an app that diagnoses the problem for you",
+    "Why a teacher fighting AI-written essays with an AI detector is already losing",
+    "What a small bakery's margins look like after delivery apps and demand-forecasting software take their cut",
+    "Why the plumber who can't get a part because of a chip shortage is more exposed to the AI economy than most AI companies",
 ]
 
 
