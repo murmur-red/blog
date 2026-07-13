@@ -50,8 +50,12 @@ def get_yesterday():
     return (datetime.date.today() - datetime.timedelta(days=1)).strftime("%B %d, %Y")
 
 
-def get_x_trends(yesterday):
+def get_x_trends(yesterday, avoid=None):
     """Use Grok to find what's trending on X in tech/AI/gaming."""
+    avoid_clause = (
+        f" Do not suggest anything related to: {avoid}. Give me genuinely different topics."
+        if avoid else ""
+    )
     response = requests.post(
         "https://api.x.ai/v1/chat/completions",
         headers={
@@ -65,7 +69,8 @@ def get_x_trends(yesterday):
                 "content": (
                     f"What were the top trending tech, AI, and gaming topics on X on {yesterday}? "
                     "Focus on what people were actually debating, hyping, or dunking on. "
-                    "Give me the top 3 topics with a sentence on why each was getting attention."
+                    "Give me the top 5 topics with a sentence on why each was getting attention."
+                    f"{avoid_clause}"
                 )
             }],
         },
@@ -124,6 +129,11 @@ def get_recent_posts(n=24):
     return posts
 
 
+def _strip_em_dashes(text):
+    """Hard-remove em dashes regardless of what the model produces."""
+    return text.replace(" — ", ". ").replace("— ", ". ").replace(" —", ".").replace("—", ".")
+
+
 def write_post(research, yesterday, recent_posts):
     """Use Claude to write a 350-word blog post based on the research."""
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
@@ -156,10 +166,51 @@ def write_post(research, yesterday, recent_posts):
             )
         }],
     )
-    text = response.content[0].text.strip()
-    # Hard-remove em dashes regardless of what the model produces
-    text = text.replace(" — ", ". ").replace("— ", ". ").replace(" —", ".").replace("—", ".")
-    return text
+    return _strip_em_dashes(response.content[0].text.strip())
+
+
+EVERGREEN_TOPICS = [
+    "Why 'best practices' are usually just whatever worked once at a company people admire",
+    "The gap between what a resume says and what the first week on the job reveals",
+    "Why most 'AI agents' today are retry loops with better marketing",
+    "Why technical debt is a financing decision, not a moral failing",
+    "The difference between a senior engineer and someone with a senior title",
+    "Why most code review comments are about style, not correctness, and what that says about a team",
+    "The myth that remote work killed mentorship",
+    "Why every company's internal tooling looks like it was built by a different company",
+]
+
+
+def write_evergreen_post(recent_posts):
+    """Last-resort fallback: write about a hardcoded, non-trend topic so the
+    pipeline always ships a post instead of failing the job outright when
+    trending topics keep colliding with what's already been published."""
+    import random
+
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    already_written = "\n".join(recent_posts) if recent_posts else "(none yet)"
+    topic = random.choice(EVERGREEN_TOPICS)
+
+    response = client.messages.create(
+        model="claude-opus-4-8",
+        max_tokens=1024,
+        system=SYSTEM,
+        messages=[{
+            "role": "user",
+            "content": (
+                f"Write today's post about this topic: {topic}\n\n"
+                "You have ALREADY published these recent posts:\n\n"
+                f"{already_written}\n\n"
+                "Hard constraint: do NOT repeat a topic, title, or core argument from the list above.\n\n"
+                "Return ONLY:\n"
+                "Line 1: Post title\n"
+                "Line 2: blank\n"
+                "Lines 3+: the 350-word post body\n\n"
+                "Nothing else. No preamble."
+            )
+        }],
+    )
+    return _strip_em_dashes(response.content[0].text.strip())
 
 
 STOPWORDS = {"a", "an", "the", "is", "are", "was", "and", "or", "of", "on", "in",
@@ -225,20 +276,24 @@ def is_similar_topic(content, recent_posts):
 
 def generate_post():
     yesterday = get_yesterday()
-    trends = get_x_trends(yesterday)
-    research = research_topics(trends, yesterday)
     recent_posts = get_recent_posts()
 
     content = None
-    for attempt in range(3):
+    avoid = None
+    max_attempts = 5
+    for attempt in range(max_attempts):
+        trends = get_x_trends(yesterday, avoid=avoid)
+        research = research_topics(trends, yesterday)
         content = write_post(research, yesterday, recent_posts)
         if not is_repeat(content, recent_posts) and not is_similar_topic(content, recent_posts):
             return content
         repeated = content.strip().split("\n")[0]
-        print(f"Attempt {attempt + 1}/3 rejected, regenerating...")
+        print(f"Attempt {attempt + 1}/{max_attempts} rejected, fetching fresh trends and regenerating...")
+        avoid = repeated
         recent_posts = [f"- REJECTED DRAFT (too similar, do not write this again): {repeated}"] + recent_posts
 
-    raise RuntimeError(f"Could not produce a sufficiently unique post after 3 attempts. Last draft: {content.splitlines()[0]}")
+    print(f"No unique trend-based post after {max_attempts} attempts. Falling back to an evergreen topic.")
+    return write_evergreen_post(recent_posts)
 
 
 def create_post_file(content, date):
